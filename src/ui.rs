@@ -1,6 +1,6 @@
 use std::{thread, str, net::UdpSocket, sync::mpsc};
 
-use crate::{common::{ClientData, JsonData, Timestamp}, network::udp::UdpHandler};
+use crate::{common::{ClientData, JsonData}, network::udp::UdpHandler};
 use druid::{Widget, widget::{Container, Label, Flex, LensWrap, TextBox, Button}, text::format::ParseFormatter, WidgetExt, EventCtx, Env};
 use log::{info, warn};
 

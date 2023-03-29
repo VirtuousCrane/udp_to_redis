@@ -3,8 +3,7 @@ use druid::{WindowDesc, AppLauncher};
 use env_logger::{Builder, Env};
 use log::info;
 
-mod ui;
-mod common;
+use udp_to_redis::{common, ui};
 
 fn main() {
     // Initialize Logger
