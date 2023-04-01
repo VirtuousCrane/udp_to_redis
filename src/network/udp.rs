@@ -1,55 +1,68 @@
-use crate::common::{JsonData, Timestamp};
-use core::fmt;
-use std::{thread::{self, JoinHandle}, str, net::UdpSocket, sync::mpsc::{Sender, SendError}, error::Error};
+use crate::common::{JsonData, Timestamp, ParseError, ProcessError, KillSwitch, Killable};
+use std::{thread::{self, JoinHandle}, str, net::UdpSocket, sync::mpsc::{Sender, SendError, Receiver, self, TryRecvError}};
 use log::{info, warn};
 
 pub struct UdpHandler {
     port: i32,
+    kill_tx: Option<Sender<KillSwitch>>,
 }
-
-#[derive(Debug)]
-pub struct ParseError;
 
 struct UdpWorker {
     tx: Sender<JsonData>,
+    kill_rx: Receiver<KillSwitch>,
     socket: UdpSocket,
 }
 
 impl UdpHandler {
     pub fn new(port: i32) -> UdpHandler {
-        UdpHandler { port }
+        UdpHandler { port, kill_tx: None }
     }
     
-    pub fn init(&self, tx: Sender<JsonData>) {
+    pub fn init(&mut self, tx: Sender<JsonData>) -> Result<JoinHandle<()>, ProcessError>{
         // Initialize UDP Socket
         let socket = match UdpSocket::bind(format!("0.0.0.0:{}", self.port)) {
             Ok(s) => s,
             Err(err) => {
                 warn!("Failed to bind UDP Port: {}", err.to_string());
-                return;
+                return Err(ProcessError);
             }
         };
         info!("Bound to UDP Port: {}", &self.port);
         
         // Spawn a Worker Thread
-        self.spawn_thread(tx, socket);
+        Ok(self.spawn_thread(tx, socket))
     }
     
-    fn spawn_thread(&self, tx: Sender<JsonData>, socket: UdpSocket) -> JoinHandle<()> {
-        thread::spawn(move || {
-            UdpWorker::new(tx, socket)
+    fn spawn_thread(&mut self, tx: Sender<JsonData>, socket: UdpSocket) -> JoinHandle<()> {
+        let (kill_tx, kill_rx) = mpsc::channel();
+        self.kill_tx = Some(kill_tx);
+        
+        let thread_handle = thread::spawn(move || {
+            UdpWorker::new(tx, kill_rx, socket)
                 .start();
-        })
+        });
+        info!("Spawned UDP Thread");
+        
+        thread_handle
     }
 }
 
 impl UdpWorker {
-    pub fn new(tx: Sender<JsonData>, socket:UdpSocket) -> UdpWorker {
-        UdpWorker { tx, socket }
+    pub fn new(tx: Sender<JsonData>, kill_rx: Receiver<KillSwitch>, socket:UdpSocket) -> UdpWorker {
+        UdpWorker { tx, kill_rx, socket }
     }
     
     pub fn start(&mut self) {
         loop {
+            // Check if a Kill Command Has Been Received
+            match self.kill_rx.try_recv() {
+                Ok(KillSwitch::ON) | Err(TryRecvError::Disconnected) => {
+                    info!("Killing UDP Thread");
+                    break;
+                },
+                Ok(KillSwitch::OFF) | Err(TryRecvError::Empty) => {},
+            };
+            
             // Receives UDP Message
             let mut msg = [0; 512];
             if let Err(err) = self.socket.recv(&mut msg) {
@@ -115,10 +128,18 @@ impl UdpWorker {
     }
 }
 
-impl Error for ParseError {}
-
-impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Failed to Parse String")
+impl Killable for UdpHandler {
+    fn kill(&self) {
+        let tx = self.kill_tx.as_ref();
+        match tx {
+            Some(t) => {
+                if let Err(_) = t.send(KillSwitch::ON) {
+                    warn!("Failed to Kill Self");
+                }
+            },
+            None => {
+                warn!("Thread not spawned yet")
+            }
+        };
     }
 }

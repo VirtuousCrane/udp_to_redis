@@ -1,4 +1,4 @@
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{time::{SystemTime, UNIX_EPOCH}, error::Error, fmt};
 
 use druid::{Data, Lens};
 use log::warn;
@@ -7,6 +7,7 @@ use serde::{Serialize, Deserialize};
 #[derive(Clone, Data, Lens)]
 pub struct ClientData {
    pub udp_port: i32,
+   pub redis_url: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -16,9 +17,14 @@ pub enum JsonData {
     UWBData(UWBDataInner),
 }
 
+pub enum KillSwitch {
+    OFF,
+    ON,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct MPU6050DataInner {
-    source: String,
+    pub source: String,
     frequency: i32,
     acc_x: f64,
     acc_y: f64,
@@ -31,9 +37,19 @@ pub struct MPU6050DataInner {
 
 #[derive(Serialize, Deserialize)]
 pub struct UWBDataInner {
-    source: String,
+    pub source: String,
     range: f64,
     timestamp: Option<u64>
+}
+
+#[derive(Debug)]
+pub struct ParseError;
+
+#[derive(Debug)]
+pub struct ProcessError;
+
+pub trait Killable {
+    fn kill(&self) {}
 }
 
 pub trait Timestamp {
@@ -53,7 +69,8 @@ pub trait Timestamp {
 impl ClientData {
     pub fn new(udp_port: i32) -> Self {
         ClientData {
-           udp_port,
+            redis_url: String::from("redis://127.0.0.1/"),
+            udp_port,
         }
     }
 }
@@ -68,4 +85,19 @@ impl Timestamp for UWBDataInner {
     fn set_timestamp(&mut self, timestamp: u64) {
         self.timestamp = Some(timestamp);
     }    
+}
+
+impl Error for ParseError {}
+impl Error for ProcessError {}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Failed to Parse String")
+    }
+}
+
+impl fmt::Display for ProcessError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Failed to Start Process")
+    }
 }
