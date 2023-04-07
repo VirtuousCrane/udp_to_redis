@@ -7,6 +7,8 @@ use crate::common::{JsonData, ParseError, KillSwitch, Killable};
 
 pub struct RedisPublisherHandler {
     redis_url: String,
+    redis_auth: Option<String>,
+    redis_auth_pwd: String,
     kill_tx: Option<Sender<KillSwitch>>,
 }
 
@@ -17,16 +19,25 @@ struct RedisPublisherWorker {
 }
 
 impl RedisPublisherHandler {
-    pub fn new(redis_url: &String) -> RedisPublisherHandler {
+    pub fn new(redis_url: String, redis_auth: Option<String>, redis_auth_pwd: String) -> RedisPublisherHandler {
         RedisPublisherHandler {
-            redis_url: String::from(redis_url),
+            redis_url,
+            redis_auth,
+            redis_auth_pwd,
             kill_tx: None,
         }
     }
     
     pub fn init(&mut self, rx: Receiver<JsonData>) -> RedisResult<JoinHandle<()>> {
         let client = Client::open(self.redis_url.as_str())?;
-        let connection = client.get_connection()?;
+        let mut connection = client.get_connection()?;
+        
+        if let Some(auth) = self.redis_auth.as_ref() {
+            redis::cmd("AUTH")
+                .arg(auth)
+                .arg(&self.redis_auth_pwd)
+                .query(&mut connection)?;
+        }
         
         // Spawns Thread
         Ok(self.spawn_thread(rx, connection))

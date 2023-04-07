@@ -3,7 +3,7 @@ use std::{thread::{self, JoinHandle}, str, net::UdpSocket, sync::mpsc::{Sender, 
 use log::{info, warn};
 
 pub struct UdpHandler {
-    port: i32,
+    port: u32,
     kill_tx: Option<Sender<KillSwitch>>,
 }
 
@@ -14,7 +14,7 @@ struct UdpWorker {
 }
 
 impl UdpHandler {
-    pub fn new(port: i32) -> UdpHandler {
+    pub fn new(port: u32) -> UdpHandler {
         UdpHandler { port, kill_tx: None }
     }
     

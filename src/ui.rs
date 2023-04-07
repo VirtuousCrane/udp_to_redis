@@ -1,7 +1,7 @@
-use std::{thread, str, net::UdpSocket, sync::mpsc};
+use std::{thread, str::{self, FromStr}, net::UdpSocket, sync::mpsc};
 
-use crate::{common::{ClientData, JsonData, ProcessError, Killable}, network::{udp::UdpHandler, redis::RedisPublisherHandler}};
-use druid::{Widget, widget::{Container, Label, Flex, LensWrap, TextBox, Button}, text::format::ParseFormatter, WidgetExt, EventCtx, Env};
+use crate::{common::{ClientData, JsonData, ProcessError, Killable}, network::{udp::UdpHandler, redis::RedisPublisherHandler}, runner::spawn_handler_thread};
+use druid::{Widget, widget::{Container, Label, Flex, LensWrap, TextBox, Button}, text::format::{ParseFormatter, Formatter}, WidgetExt, EventCtx, Env};
 use log::{info, warn};
 
 /// Creates the ui of the program
@@ -12,9 +12,21 @@ pub fn build_ui() -> impl Widget<ClientData> {
             TextBox::new()
                 .with_formatter(ParseFormatter::new()),
             ClientData::redis_url
+        ))
+        .with_child(Label::new("Redis AUTH: "))
+        .with_child(LensWrap::new(
+            TextBox::new()
+                .with_formatter(ParseFormatter::new()),
+            ClientData::redis_auth
+        ))
+        .with_child(Label::new("Password: "))
+        .with_child(LensWrap::new(
+            TextBox::new()
+                .with_formatter(ParseFormatter::new()),
+            ClientData::redis_auth_pwd
         ));
     
-   let udp_data_input_row = Flex::row()
+    let udp_data_input_row = Flex::row()
         .with_child(Label::new("UDP Port: "))
         .with_child(LensWrap::new(
             TextBox::new()
@@ -37,26 +49,5 @@ pub fn build_ui() -> impl Widget<ClientData> {
 
 /// Callback for the connect button. Creates a new thread to listen to UDP messages
 fn button_callback(_ctx: &mut EventCtx, data: &mut ClientData, _env: &Env) {
-    // Initialize Message Passing Channel
-    let (tx, rx) = mpsc::channel();
-    let mut udp_handler = UdpHandler::new(data.udp_port);
-    let mut redis_handler = RedisPublisherHandler::new(&data.redis_url);
-    
-    thread::spawn(move || {
-        let udp_thread_handle = match udp_handler.init(tx) {
-            Ok(h) => h,
-            Err(_) => return,
-        };
-        
-        let redis_thread_handle_op = redis_handler.init(rx)
-            .ok();
-            
-        if let None = redis_thread_handle_op {
-            udp_handler.kill();
-        }
-        let redis_thread_handle = redis_thread_handle_op.unwrap();
-        
-        udp_thread_handle.join();
-        redis_thread_handle.join();
-    });
+    spawn_handler_thread(data.clone());
 }
