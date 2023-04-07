@@ -10,6 +10,7 @@ pub struct ClientData {
    pub redis_url: String,
    pub verbose: bool,
    pub redis_auth: String,
+   pub redis_auth_pwd: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -69,10 +70,11 @@ pub trait Timestamp {
 }
 
 impl ClientData {
-    pub fn new(udp_port: u32, redis_url: String, redis_auth: Option<String>, verbose: bool) -> Self {
+    pub fn new(udp_port: u32, redis_url: String, redis_auth: Option<String>, redis_auth_pwd: String, verbose: bool) -> Self {
         ClientData {
             redis_url,
             redis_auth: redis_auth.unwrap_or(String::new()),
+            redis_auth_pwd,
             verbose,
             udp_port,
         }

@@ -25,7 +25,7 @@ pub fn spawn_handler_thread(data: ClientData) -> JoinHandle<()> {
     // Initialize Message Passing Channel
     let (tx, rx) = mpsc::channel();
     let mut udp_handler = UdpHandler::new(data.udp_port);
-    let mut redis_handler = RedisPublisherHandler::new(data.redis_url.clone(), auth);
+    let mut redis_handler = RedisPublisherHandler::new(data.redis_url.clone(), auth, data.redis_auth_pwd.clone());
     
     thread::spawn(move || {
         let udp_thread_handle = match udp_handler.init(tx) {

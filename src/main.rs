@@ -10,7 +10,7 @@ use udp_to_redis::{common, ui, runner};
 
 fn main() {
     // Initializing the parser variables
-    let mut data = ClientData::new(8888, String::from("redis://localhost:6379"), None, false);
+    let mut data = ClientData::new(8888, String::from("redis://localhost:6379"), None, String::new(), false);
     let mut interactive: bool = false;
     
     {
@@ -31,6 +31,9 @@ fn main() {
             
         arg_parser.refer(&mut data.redis_auth)
             .add_option(&["-a", "--auth"], Store, "Invokes the Redis AUTH command using the argument supplied");
+        
+        arg_parser.refer(&mut data.redis_auth_pwd)
+            .add_option(&["-p", "--password"], Store, "The password for the Redis AUTH command. Requires -a to be supplied");
         
         arg_parser.parse_args_or_exit();
     }

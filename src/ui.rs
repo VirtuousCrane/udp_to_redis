@@ -18,6 +18,12 @@ pub fn build_ui() -> impl Widget<ClientData> {
             TextBox::new()
                 .with_formatter(ParseFormatter::new()),
             ClientData::redis_auth
+        ))
+        .with_child(Label::new("Password: "))
+        .with_child(LensWrap::new(
+            TextBox::new()
+                .with_formatter(ParseFormatter::new()),
+            ClientData::redis_auth_pwd
         ));
     
     let udp_data_input_row = Flex::row()
