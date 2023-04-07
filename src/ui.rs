@@ -1,6 +1,6 @@
 use std::{thread, str, net::UdpSocket, sync::mpsc};
 
-use crate::{common::{ClientData, JsonData, ProcessError, Killable}, network::{udp::UdpHandler, redis::RedisPublisherHandler}};
+use crate::{common::{ClientData, JsonData, ProcessError, Killable}, network::{udp::UdpHandler, redis::RedisPublisherHandler}, runner::spawn_handler_thread};
 use druid::{Widget, widget::{Container, Label, Flex, LensWrap, TextBox, Button}, text::format::ParseFormatter, WidgetExt, EventCtx, Env};
 use log::{info, warn};
 
@@ -37,26 +37,5 @@ pub fn build_ui() -> impl Widget<ClientData> {
 
 /// Callback for the connect button. Creates a new thread to listen to UDP messages
 fn button_callback(_ctx: &mut EventCtx, data: &mut ClientData, _env: &Env) {
-    // Initialize Message Passing Channel
-    let (tx, rx) = mpsc::channel();
-    let mut udp_handler = UdpHandler::new(data.udp_port);
-    let mut redis_handler = RedisPublisherHandler::new(&data.redis_url);
-    
-    thread::spawn(move || {
-        let udp_thread_handle = match udp_handler.init(tx) {
-            Ok(h) => h,
-            Err(_) => return,
-        };
-        
-        let redis_thread_handle_op = redis_handler.init(rx)
-            .ok();
-            
-        if let None = redis_thread_handle_op {
-            udp_handler.kill();
-        }
-        let redis_thread_handle = redis_thread_handle_op.unwrap();
-        
-        udp_thread_handle.join();
-        redis_thread_handle.join();
-    });
+    spawn_handler_thread(data.udp_port as u32, data.redis_url.clone());
 }
