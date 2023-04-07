@@ -38,10 +38,11 @@ fn main() {
     if interactive {
         start_ui(data);
     } else {
-        runner::spawn_handler_thread(data);
-        loop {}
+        runner::spawn_handler_thread(data)
+            .join();
     }
     
+    info!("Exiting Program...")
 }
 
 fn start_ui(data: ClientData) {

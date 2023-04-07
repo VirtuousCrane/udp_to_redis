@@ -28,7 +28,13 @@ impl RedisPublisherHandler {
     
     pub fn init(&mut self, rx: Receiver<JsonData>) -> RedisResult<JoinHandle<()>> {
         let client = Client::open(self.redis_url.as_str())?;
-        let connection = client.get_connection()?;
+        let mut connection = client.get_connection()?;
+        
+        if let Some(auth) = self.redis_auth.as_ref() {
+            redis::cmd("AUTH")
+                .arg(auth)
+                .query(&mut connection)?;
+        }
         
         // Spawns Thread
         Ok(self.spawn_thread(rx, connection))

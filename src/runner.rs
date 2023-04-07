@@ -1,13 +1,14 @@
+use std::thread::JoinHandle;
 use std::{sync::mpsc, thread};
 
 use env_logger::{Builder, Env};
-use log::info;
+use log::{info, warn};
 
 use crate::network::{udp::UdpHandler, redis::RedisPublisherHandler};
 use crate::common::{Killable, ClientData};
 
 /// Spawns a thread that handles UDP and Redis Connections
-pub fn spawn_handler_thread(data: ClientData) {
+pub fn spawn_handler_thread(data: ClientData) -> JoinHandle<()> {
     // Initialize Logger
     if data.verbose {
         Builder::from_env(Env::default().default_filter_or("udp_to_redis=trace"))
@@ -32,15 +33,17 @@ pub fn spawn_handler_thread(data: ClientData) {
             Err(_) => return,
         };
         
-        let redis_thread_handle_op = redis_handler.init(rx)
-            .ok();
-            
-        if let None = redis_thread_handle_op {
-            udp_handler.kill();
-        }
-        let redis_thread_handle = redis_thread_handle_op.unwrap();
+        let redis_thread_handle = match redis_handler.init(rx) {
+            Ok(t) => t,
+            Err(e) => {
+                warn!("Failed to spawn Redis Thread: {}", e.to_string());
+                warn!("Killing UDP Thread...");
+                udp_handler.kill();
+                return;
+            }
+        };
         
         udp_thread_handle.join();
         redis_thread_handle.join();
-    });
+    })
 }
