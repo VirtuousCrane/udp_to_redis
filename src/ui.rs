@@ -1,7 +1,7 @@
-use std::{thread, str, net::UdpSocket, sync::mpsc};
+use std::{thread, str::{self, FromStr}, net::UdpSocket, sync::mpsc};
 
 use crate::{common::{ClientData, JsonData, ProcessError, Killable}, network::{udp::UdpHandler, redis::RedisPublisherHandler}, runner::spawn_handler_thread};
-use druid::{Widget, widget::{Container, Label, Flex, LensWrap, TextBox, Button}, text::format::ParseFormatter, WidgetExt, EventCtx, Env};
+use druid::{Widget, widget::{Container, Label, Flex, LensWrap, TextBox, Button}, text::format::{ParseFormatter, Formatter}, WidgetExt, EventCtx, Env};
 use log::{info, warn};
 
 /// Creates the ui of the program
@@ -12,9 +12,15 @@ pub fn build_ui() -> impl Widget<ClientData> {
             TextBox::new()
                 .with_formatter(ParseFormatter::new()),
             ClientData::redis_url
+        ))
+        .with_child(Label::new("Redis AUTH: "))
+        .with_child(LensWrap::new(
+            TextBox::new()
+                .with_formatter(ParseFormatter::new()),
+            ClientData::redis_auth
         ));
     
-   let udp_data_input_row = Flex::row()
+    let udp_data_input_row = Flex::row()
         .with_child(Label::new("UDP Port: "))
         .with_child(LensWrap::new(
             TextBox::new()
@@ -37,5 +43,5 @@ pub fn build_ui() -> impl Widget<ClientData> {
 
 /// Callback for the connect button. Creates a new thread to listen to UDP messages
 fn button_callback(_ctx: &mut EventCtx, data: &mut ClientData, _env: &Env) {
-    spawn_handler_thread(data.udp_port as u32, data.redis_url.clone());
+    spawn_handler_thread(data.clone());
 }

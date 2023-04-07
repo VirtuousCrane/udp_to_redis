@@ -1,4 +1,4 @@
-use std::{time::{SystemTime, UNIX_EPOCH}, error::Error, fmt};
+use std::{time::{SystemTime, UNIX_EPOCH}, error::Error, fmt::{self, Display}};
 
 use druid::{Data, Lens};
 use log::warn;
@@ -6,8 +6,10 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Clone, Data, Lens)]
 pub struct ClientData {
-   pub udp_port: i32,
+   pub udp_port: u32,
    pub redis_url: String,
+   pub verbose: bool,
+   pub redis_auth: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -67,9 +69,11 @@ pub trait Timestamp {
 }
 
 impl ClientData {
-    pub fn new(udp_port: i32) -> Self {
+    pub fn new(udp_port: u32, redis_url: String, redis_auth: Option<String>, verbose: bool) -> Self {
         ClientData {
-            redis_url: String::from("redis://127.0.0.1/"),
+            redis_url,
+            redis_auth: redis_auth.unwrap_or(String::new()),
+            verbose,
             udp_port,
         }
     }

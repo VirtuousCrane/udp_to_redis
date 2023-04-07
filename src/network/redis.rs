@@ -7,6 +7,7 @@ use crate::common::{JsonData, ParseError, KillSwitch, Killable};
 
 pub struct RedisPublisherHandler {
     redis_url: String,
+    redis_auth: Option<String>,
     kill_tx: Option<Sender<KillSwitch>>,
 }
 
@@ -17,9 +18,10 @@ struct RedisPublisherWorker {
 }
 
 impl RedisPublisherHandler {
-    pub fn new(redis_url: &String) -> RedisPublisherHandler {
+    pub fn new(redis_url: String, redis_auth: Option<String>) -> RedisPublisherHandler {
         RedisPublisherHandler {
-            redis_url: String::from(redis_url),
+            redis_url,
+            redis_auth,
             kill_tx: None,
         }
     }
