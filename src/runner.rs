@@ -21,11 +21,17 @@ pub fn spawn_handler_thread(data: ClientData) -> JoinHandle<()> {
     } else {
         Some(data.redis_auth.clone())
     };
+
+    let auth_pwd = if data.redis_auth_pwd.is_empty() {
+        None
+    } else {
+        Some(data.redis_auth_pwd.clone())
+    };
     
     // Initialize Message Passing Channel
     let (tx, rx) = mpsc::channel();
     let mut udp_handler = UdpHandler::new(data.udp_port);
-    let mut redis_handler = RedisPublisherHandler::new(data.redis_url.clone(), auth, data.redis_auth_pwd.clone());
+    let mut redis_handler = RedisPublisherHandler::new(data.redis_url.clone(), auth, auth_pwd);
     
     thread::spawn(move || {
         let udp_thread_handle = match udp_handler.init(tx) {
