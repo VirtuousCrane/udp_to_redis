@@ -102,13 +102,13 @@ impl RedisPublisherWorker {
             // Gets the channel name to publish to
             
             // CASE 1: SEPARATE BETWEEN MPU6050 AND UWB CHANNELS
-            // let channel = match json_obj {
-            //     JsonData::MPU6050Data(_) => "MOTIONCAPTURE-MPU6050",
-            //     JsonData::UWBData(_) => "MOTIONCAPTURE-UWB"
-            // };
+            let channel = match json_obj {
+                JsonData::MPU6050Data(_) => "tag:motioncapture.nodemcu",
+                JsonData::UWBData(_) => "tag:motioncapture.uwb"
+            };
             
             // CASE 2: LET MPU6050 AND UWB USE THE SAME CHANNEL
-            let channel = "MOTIONCAPTURE";
+            // let channel = "tag:motioncapture";
             
             
             // Parses the JSON Struct into a String
@@ -118,7 +118,7 @@ impl RedisPublisherWorker {
             };
             
             // Publishes the message
-            let publish_result: RedisResult<()> = self.connection.publish(channel, message);
+            let publish_result: RedisResult<()> = self.connection.set(channel, message);
             if let Err(e) = publish_result {
                 warn!("Failed to publish to Redis: {}", e.to_string());
                 continue;
