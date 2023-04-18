@@ -33,7 +33,7 @@ fn main() {
             .add_option(&["-a", "--auth"], Store, "Invokes the Redis AUTH command using the argument supplied");
         
         arg_parser.refer(&mut data.redis_auth_pwd)
-            .add_option(&["-p", "--password"], Store, "The password for the Redis AUTH command. Requires -a to be supplied");
+            .add_option(&["-p", "--password"], Store, "The password for the Redis AUTH command.");
         
         arg_parser.parse_args_or_exit();
     }
