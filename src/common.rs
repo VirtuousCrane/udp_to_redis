@@ -41,6 +41,7 @@ pub struct MPU6050DataInner {
 #[derive(Serialize, Deserialize)]
 pub struct UWBDataInner {
     pub source: String,
+    pub destination: String,
     range: f64,
     timestamp: Option<u64>
 }
