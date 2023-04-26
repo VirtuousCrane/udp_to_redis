@@ -118,7 +118,14 @@ impl RedisPublisherWorker {
             };
             
             // Publishes the message
-            let publish_result: RedisResult<()> = self.connection.set(channel, message);
+            let set_result: RedisResult<()> = self.connection.set(channel, message.clone());
+	    let publish_result: RedisResult<()> = self.connection.publish(channel, message);
+
+	    if let Err(e) = set_result {
+		warn!("Failed to set value in Redis: {}", e.to_string());
+		continue;
+	    }
+
             if let Err(e) = publish_result {
                 warn!("Failed to publish to Redis: {}", e.to_string());
                 continue;
