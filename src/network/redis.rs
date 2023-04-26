@@ -3,7 +3,7 @@ use std::{sync::mpsc::{Receiver, Sender, self, TryRecvError}, thread::{self, Joi
 use log::{warn, info};
 use redis::{Connection, Client, RedisResult, Commands};
 
-use crate::common::{JsonData, ParseError, KillSwitch, Killable};
+use crate::common::{JsonData, ParseError, KillSwitch, Killable, MPU6050DataInner};
 
 pub struct RedisPublisherHandler {
     redis_url: String,
@@ -72,6 +72,8 @@ impl RedisPublisherWorker {
     }
     
     pub fn start(&mut self) {
+        const BASE_TAG_NAME: &'static str = "tag:motioncapture";
+
         loop {
             // Check if a Kill Command Has Been Received
             match self.kill_rx.try_recv() {
@@ -98,9 +100,9 @@ impl RedisPublisherWorker {
             // Gets the channel name to publish to
             
             // CASE 1: SEPARATE BETWEEN MPU6050 AND UWB CHANNELS
-            let channel = match json_obj {
-                JsonData::MPU6050Data(_) => "tag:motioncapture.nodemcu",
-                JsonData::UWBData(_) => "tag:motioncapture.uwb"
+            let channel = match &json_obj {
+                JsonData::MPU6050Data(d) => format!("{}.nodemcu.{}", BASE_TAG_NAME, &d.source),
+                JsonData::UWBData(_) => format!("{}.uwb", BASE_TAG_NAME),
             };
             
             // CASE 2: LET MPU6050 AND UWB USE THE SAME CHANNEL
@@ -114,13 +116,13 @@ impl RedisPublisherWorker {
             };
             
             // Publishes the message
-            let set_result: RedisResult<()> = self.connection.set(channel, message.clone());
-	    let publish_result: RedisResult<()> = self.connection.publish(channel, message);
+            let set_result: RedisResult<()> = self.connection.set(&channel, &message);
+    	    let publish_result: RedisResult<()> = self.connection.publish(&channel, &message);
 
-	    if let Err(e) = set_result {
-		warn!("Failed to set value in Redis: {}", e.to_string());
-		continue;
-	    }
+            if let Err(e) = set_result {
+                warn!("Failed to set value in Redis: {}", e.to_string());
+                continue;
+            }
 
             if let Err(e) = publish_result {
                 warn!("Failed to publish to Redis: {}", e.to_string());
