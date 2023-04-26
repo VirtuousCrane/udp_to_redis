@@ -75,11 +75,7 @@ impl RedisPublisherWorker {
         loop {
             // Check if a Kill Command Has Been Received
             match self.kill_rx.try_recv() {
-                // Ok(KillSwitch::ON) | Err(TryRecvError::Disconnected) => {
-                //     info!("Killing Redis Thread");
-                //     break;
-                // },
-                Ok(KillSwitch::ON) => {
+               Ok(KillSwitch::ON) => {
                     info!("KillSwitch Received: Killing Redis Thread");
                     break;
                 },
